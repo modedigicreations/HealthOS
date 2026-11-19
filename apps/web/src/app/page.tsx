@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { UserRoleSchema } from '@healthos/contracts';
 
 const MODULES = [
@@ -36,10 +37,38 @@ export default function HomePage() {
         <h1 style={{ margin: '0.5rem 0', fontSize: '2rem' }}>
           HealthOS — All-in-One Healthcare Management System
         </h1>
-        <p style={{ margin: 0, color: 'var(--muted)' }}>
+        <p style={{ margin: '0 0 1.25rem', color: 'var(--muted)' }}>
           MODE Digital Creations Limited • {MODULES.length} Interconnected Modules • {roles.length}{' '}
           RBAC Roles
         </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link
+            href="/login"
+            style={{
+              padding: '0.625rem 1.25rem',
+              borderRadius: 8,
+              background: 'var(--accent)',
+              color: '#fff',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Sign In (MFA)
+          </Link>
+          <Link
+            href="/dashboard"
+            style={{
+              padding: '0.625rem 1.25rem',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Open Clinical Workspace
+          </Link>
+        </div>
       </header>
 
       <section aria-labelledby="modules-heading">
