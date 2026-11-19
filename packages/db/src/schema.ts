@@ -599,4 +599,169 @@ export const admissions = pgTable(
   ],
 );
 
+// ============================================================================
+// MODULE 3: Laboratory Information Management (LIMS)
+// ============================================================================
+
+export const labTests = pgTable(
+  'lab_tests',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    category: text('category').notNull(),
+    specimenType: text('specimen_type').notNull(),
+    priceMinor: integer('price_minor').notNull().default(0),
+    turnaroundMinutes: integer('turnaround_minutes').notNull().default(120),
+    referenceRanges: jsonb('reference_ranges').$type<Array<Record<string, unknown>>>().notNull().default([]),
+    autoCalculationRule: text('auto_calculation_rule').notNull().default('NONE'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('lab_tests_org_code_idx').on(t.organizationId, t.code)],
+);
+
+export const labOrders = pgTable(
+  'lab_orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    consultationId: uuid('consultation_id').references(() => consultations.id),
+    testId: uuid('test_id')
+      .notNull()
+      .references(() => labTests.id),
+    orderedByUserId: uuid('ordered_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    priority: text('priority').notNull().default('ROUTINE'),
+    status: text('status').notNull().default('REQUESTED'), // REQUESTED | SAMPLE_COLLECTED | PROCESSING | RESULT_ENTERED | AUTHORIZED | CANCELLED
+    paymentStatus: text('payment_status').notNull().default('UNPAID'), // UNPAID | PAID | WAIVED
+    externalReferralLab: text('external_referral_lab'),
+    clinicalNotesEncrypted: text('clinical_notes_encrypted'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('lab_orders_patient_idx').on(t.organizationId, t.patientId, t.createdAt),
+    index('lab_orders_status_idx').on(t.organizationId, t.branchId, t.status),
+  ],
+);
+
+export const labSamples = pgTable(
+  'lab_samples',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => labOrders.id, { onDelete: 'cascade' }),
+    sampleBarcode: text('sample_barcode').notNull(),
+    qrPayload: text('qr_payload').notNull(),
+    specimenType: text('specimen_type').notNull(),
+    status: text('status').notNull().default('COLLECTED'), // COLLECTED | RECEIVED | PROCESSING | REJECTED
+    rejectionReason: text('rejection_reason'),
+    collectedByUserId: uuid('collected_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    assignedTechnicianId: uuid('assigned_technician_id').references(() => users.id),
+    collectedAt: timestamp('collected_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('lab_samples_org_barcode_idx').on(t.organizationId, t.sampleBarcode),
+    index('lab_samples_order_idx').on(t.orderId),
+  ],
+);
+
+export const labResults = pgTable(
+  'lab_results',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => labOrders.id, { onDelete: 'cascade' }),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    resultPayloadEncrypted: text('result_payload_encrypted').notNull(),
+    status: text('status').notNull().default('PENDING_AUTHORIZATION'), // PENDING_AUTHORIZATION | AUTHORIZED
+    enteredByUserId: uuid('entered_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    authorizedByUserId: uuid('authorized_by_user_id').references(() => users.id),
+    digitalSignatureHash: text('digital_signature_hash'),
+    enteredAt: timestamp('entered_at', { withTimezone: true }).defaultNow().notNull(),
+    authorizedAt: timestamp('authorized_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('lab_results_order_idx').on(t.orderId),
+    index('lab_results_patient_idx').on(t.organizationId, t.patientId),
+  ],
+);
+
+export const labQcRecords = pgTable(
+  'lab_qc_records',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    equipmentName: text('equipment_name').notNull(),
+    controlLot: text('control_lot').notNull(),
+    passed: boolean('passed').notNull(),
+    notes: text('notes'),
+    recordedByUserId: uuid('recorded_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('lab_qc_org_branch_idx').on(t.organizationId, t.branchId, t.recordedAt)],
+);
+
+export const labReagents = pgTable(
+  'lab_reagents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    name: text('name').notNull(),
+    lotNumber: text('lot_number').notNull(),
+    quantityRemaining: integer('quantity_remaining').notNull(),
+    reorderLevel: integer('reorder_level').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('lab_reagents_org_branch_idx').on(t.organizationId, t.branchId)],
+);
+
+
 

@@ -10,15 +10,24 @@ import { PatientsController } from './patients/patients.controller.js';
 import { PatientsService } from './patients/patients.service.js';
 import { ClinicalController } from './clinical/clinical.controller.js';
 import { ClinicalService } from './clinical/clinical.service.js';
+import { LabController } from './lab/lab.controller.js';
+import { LabService } from './lab/lab.service.js';
 
 @Module({
   imports: [SecurityModule],
-  controllers: [HealthController, AuthController, PatientsController, ClinicalController],
+  controllers: [
+    HealthController,
+    AuthController,
+    PatientsController,
+    ClinicalController,
+    LabController,
+  ],
   providers: [
     AuditService,
     AuthService,
     PatientsService,
     ClinicalService,
+    LabService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

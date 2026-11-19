@@ -4,7 +4,10 @@ import {
   BookAppointmentSchema,
   BootstrapOrgSchema,
   CreateConsultationSchema,
+  CreateLabOrderSchema,
+  CreateLabTestSchema,
   CreateWardSchema,
+  EnterLabResultSchema,
   RegisterPatientSchema,
   RecordVitalsSchema,
   UpdateConsentSchema,
@@ -103,5 +106,35 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       bedLabels: ['A-01', 'A-02', 'A-03'],
     });
     assert.equal(ward.success, true);
+  });
+
+  it('validates Module 3 LIMS DTOs (CreateLabTest, CreateLabOrder, EnterLabResult)', () => {
+    const testDef = CreateLabTestSchema.safeParse({
+      code: 'LIPID',
+      name: 'Lipid Profile',
+      category: 'BIOCHEMISTRY',
+      specimenType: 'SERUM',
+      priceMinor: 1500000,
+      autoCalculationRule: 'LDL_FRIEDEWALD',
+    });
+    assert.equal(testDef.success, true);
+
+    const order = CreateLabOrderSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      testId: '33333333-3333-4333-8333-333333333333',
+      priority: 'URGENT',
+    });
+    assert.equal(order.success, true);
+
+    const result = EnterLabResultSchema.safeParse({
+      orderId: '44444444-4444-4444-8444-444444444444',
+      parameters: [
+        { name: 'Total Cholesterol', value: 200, unit: 'mg/dL', flag: 'NORMAL' },
+        { name: 'HDL', value: 50, unit: 'mg/dL', flag: 'NORMAL' },
+        { name: 'Triglycerides', value: 150, unit: 'mg/dL', flag: 'NORMAL' },
+      ],
+    });
+    assert.equal(result.success, true);
   });
 });
