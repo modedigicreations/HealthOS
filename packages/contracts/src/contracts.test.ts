@@ -9,10 +9,12 @@ import {
   CreateLabOrderSchema,
   CreateLabTestSchema,
   CreatePurchaseOrderSchema,
+  CreateShiftSchema,
   CreateWardSchema,
   DispensePrescriptionSchema,
   EnterLabResultSchema,
   RecordPaymentSchema,
+  RecordStaffLicenceSchema,
   RegisterPatientSchema,
   RegisterSupplierSchema,
   RecordVitalsSchema,
@@ -224,5 +226,27 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       claimedAmountMinor: 3000000,
     });
     assert.equal(claim.success, true);
+  });
+
+  it('validates Module 7 HR DTOs', () => {
+    const licence = RecordStaffLicenceSchema.safeParse({
+      userId: '11111111-1111-4111-8111-111111111111',
+      licenceType: 'MDCN Practicing Licence',
+      issuingBody: 'Medical and Dental Council of Nigeria',
+      licenceNumber: 'MDCN/2026/99123',
+      issuedAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+    });
+    assert.equal(licence.success, true);
+
+    const shift = CreateShiftSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      userId: '22222222-2222-4222-8222-222222222222',
+      department: 'EMERGENCY',
+      shiftType: 'NIGHT',
+      startsAt: '2026-11-20T20:00:00.000Z',
+      endsAt: '2026-11-21T08:00:00.000Z',
+    });
+    assert.equal(shift.success, true);
   });
 });

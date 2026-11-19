@@ -1163,6 +1163,145 @@ export const hmoClaims = pgTable(
   (t) => [index('hmo_claims_org_status_idx').on(t.organizationId, t.status)],
 );
 
+// ============================================================================
+// MODULE 7: Staff & Human Resource Management
+// ============================================================================
+
+export const staffProfiles = pgTable(
+  'staff_profiles',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    employeeCode: text('employee_code').notNull(),
+    department: text('department').notNull(),
+    designation: text('designation').notNull(),
+    contactEncrypted: text('contact_encrypted').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('staff_profiles_org_user_idx').on(t.organizationId, t.userId),
+    uniqueIndex('staff_profiles_org_code_idx').on(t.organizationId, t.employeeCode),
+  ],
+);
+
+export const staffLicences = pgTable(
+  'staff_licences',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    licenceType: text('licence_type').notNull(),
+    issuingBody: text('issuing_body').notNull(),
+    licenceNumberEncrypted: text('licence_number_encrypted').notNull(),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('staff_licences_expiry_idx').on(t.organizationId, t.expiresAt)],
+);
+
+export const staffShifts = pgTable(
+  'staff_shifts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    department: text('department').notNull(),
+    shiftType: text('shift_type').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('staff_shifts_branch_time_idx').on(t.organizationId, t.branchId, t.startsAt)],
+);
+
+export const staffAttendance = pgTable(
+  'staff_attendance',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    shiftId: uuid('shift_id').references(() => staffShifts.id),
+    clockInAt: timestamp('clock_in_at', { withTimezone: true }).defaultNow().notNull(),
+    clockOutAt: timestamp('clock_out_at', { withTimezone: true }),
+  },
+  (t) => [index('staff_attendance_user_idx').on(t.organizationId, t.userId, t.clockInAt)],
+);
+
+export const staffLeaves = pgTable(
+  'staff_leaves',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    leaveType: text('leave_type').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    reason: text('reason').notNull(),
+    status: text('status').notNull().default('PENDING'), // PENDING | APPROVED | REJECTED
+    decidedByUserId: uuid('decided_by_user_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('staff_leaves_org_status_idx').on(t.organizationId, t.status)],
+);
+
+export const staffTasks = pgTable(
+  'staff_tasks',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    assignedToUserId: uuid('assigned_to_user_id')
+      .notNull()
+      .references(() => users.id),
+    assignedByUserId: uuid('assigned_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    title: text('title').notNull(),
+    description: text('description'),
+    status: text('status').notNull().default('OPEN'), // OPEN | IN_PROGRESS | DONE
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('staff_tasks_assignee_idx').on(t.organizationId, t.assignedToUserId, t.status)],
+);
+
+
 
 
 
