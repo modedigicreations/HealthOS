@@ -1412,6 +1412,84 @@ export const capaActions = pgTable(
   (t) => [index('capa_actions_org_status_idx').on(t.organizationId, t.status)],
 );
 
+// ============================================================================
+// MODULE 9: Equipment & Facility Management
+// ============================================================================
+
+export const equipmentAssets = pgTable(
+  'equipment_assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    assetTag: text('asset_tag').notNull(),
+    name: text('name').notNull(),
+    serialNumber: text('serial_number'),
+    department: text('department').notNull(),
+    status: text('status').notNull().default('OPERATIONAL'), // OPERATIONAL | MAINTENANCE | DOWN | DECOMMISSIONED
+    nextPreventiveMaintenanceAt: timestamp('next_preventive_maintenance_at', { withTimezone: true }),
+    nextCalibrationAt: timestamp('next_calibration_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('equipment_assets_org_tag_idx').on(t.organizationId, t.assetTag),
+    index('equipment_assets_branch_idx').on(t.organizationId, t.branchId, t.status),
+  ],
+);
+
+export const equipmentServiceLogs = pgTable(
+  'equipment_service_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    equipmentId: uuid('equipment_id')
+      .notNull()
+      .references(() => equipmentAssets.id, { onDelete: 'cascade' }),
+    serviceType: text('service_type').notNull(), // PREVENTIVE | CALIBRATION | INSPECTION | REPAIR
+    costMinor: integer('cost_minor').notNull().default(0),
+    downtimeMinutes: integer('downtime_minutes').notNull().default(0),
+    notes: text('notes').notNull(),
+    recordedByUserId: uuid('recorded_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    performedAt: timestamp('performed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('equipment_service_logs_eq_idx').on(t.organizationId, t.equipmentId)],
+);
+
+export const maintenanceTickets = pgTable(
+  'maintenance_tickets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    equipmentId: uuid('equipment_id').references(() => equipmentAssets.id),
+    ticketType: text('ticket_type').notNull(), // EQUIPMENT_FAULT | FACILITY_MAINTENANCE
+    priority: text('priority').notNull().default('MEDIUM'),
+    description: text('description').notNull(),
+    status: text('status').notNull().default('OPEN'), // OPEN | IN_PROGRESS | RESOLVED
+    assignedToUserId: uuid('assigned_to_user_id').references(() => users.id),
+    reportedByUserId: uuid('reported_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('maintenance_tickets_branch_idx').on(t.organizationId, t.branchId, t.status)],
+);
+
+
 
 
 

@@ -19,6 +19,7 @@ import {
   RegisterPatientSchema,
   RegisterSupplierSchema,
   RecordVitalsSchema,
+  RegisterEquipmentSchema,
   ReportIncidentSchema,
   SubmitHmoClaimSchema,
   TransferStockSchema,
@@ -269,5 +270,15 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       description: 'Needle-stick injury reported in Phlebotomy Bay 2; PEP protocol initiated.',
     });
     assert.equal(incident.success, true);
+  });
+
+  it('validates Module 9 Equipment DTOs', () => {
+    const eqAsset = RegisterEquipmentSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      assetTag: 'EQ-LAB-0042',
+      name: 'Mindray BC-5380 Hematology Analyzer',
+      department: 'LABORATORY',
+    });
+    assert.equal(eqAsset.success, true);
   });
 });

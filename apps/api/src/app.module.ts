@@ -22,6 +22,8 @@ import { HrController } from './hr/hr.controller.js';
 import { HrService } from './hr/hr.service.js';
 import { ComplianceController } from './compliance/compliance.controller.js';
 import { ComplianceService } from './compliance/compliance.service.js';
+import { EquipmentController } from './equipment/equipment.controller.js';
+import { EquipmentService } from './equipment/equipment.service.js';
 
 @Module({
   imports: [SecurityModule],
@@ -36,6 +38,7 @@ import { ComplianceService } from './compliance/compliance.service.js';
     BillingController,
     HrController,
     ComplianceController,
+    EquipmentController,
   ],
   providers: [
     AuditService,
@@ -48,6 +51,7 @@ import { ComplianceService } from './compliance/compliance.service.js';
     BillingService,
     HrService,
     ComplianceService,
+    EquipmentService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
