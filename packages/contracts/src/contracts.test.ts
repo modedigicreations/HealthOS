@@ -7,10 +7,12 @@ import {
   CreateInventoryItemSchema,
   CreateLabOrderSchema,
   CreateLabTestSchema,
+  CreatePurchaseOrderSchema,
   CreateWardSchema,
   DispensePrescriptionSchema,
   EnterLabResultSchema,
   RegisterPatientSchema,
+  RegisterSupplierSchema,
   RecordVitalsSchema,
   TransferStockSchema,
   UpdateConsentSchema,
@@ -169,5 +171,23 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       quantity: 10,
     });
     assert.equal(transfer.success, true);
+  });
+
+  it('validates Module 5 Procurement DTOs', () => {
+    const supplier = RegisterSupplierSchema.safeParse({
+      name: 'MedSupply Africa Ltd',
+      category: 'PHARMACEUTICALS',
+      contactName: 'Tunde Bakare',
+      contactEmail: 'orders@medsupply.ng',
+      contactPhone: '+2348011112222',
+    });
+    assert.equal(supplier.success, true);
+
+    const po = CreatePurchaseOrderSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      supplierId: '22222222-2222-4222-8222-222222222222',
+      items: [{ description: 'Surgical Gloves Box', quantity: 100, unitPriceMinor: 450000 }],
+    });
+    assert.equal(po.success, true);
   });
 });

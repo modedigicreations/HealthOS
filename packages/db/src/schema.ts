@@ -875,6 +875,150 @@ export const dispenseLogs = pgTable(
   (t) => [index('dispense_logs_patient_idx').on(t.organizationId, t.patientId, t.dispensedAt)],
 );
 
+// ============================================================================
+// MODULE 5: Procurement & Supplier Management
+// ============================================================================
+
+export const suppliers = pgTable(
+  'suppliers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    category: text('category').notNull(),
+    verificationStatus: text('verification_status').notNull().default('PENDING'), // PENDING | VERIFIED | SUSPENDED
+    ratingScore: integer('rating_score').notNull().default(5),
+    contactDetailsEncrypted: text('contact_details_encrypted').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('suppliers_org_idx').on(t.organizationId, t.verificationStatus)],
+);
+
+export const purchaseRequisitions = pgTable(
+  'purchase_requisitions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    requestedByUserId: uuid('requested_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    status: text('status').notNull().default('OPEN'), // OPEN | QUOTED | ORDERED | CLOSED
+    items: jsonb('items').$type<Array<Record<string, unknown>>>().notNull(),
+    justification: text('justification'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('purchase_reqs_org_branch_idx').on(t.organizationId, t.branchId)],
+);
+
+export const rfqQuotes = pgTable(
+  'rfq_quotes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    requisitionId: uuid('requisition_id')
+      .notNull()
+      .references(() => purchaseRequisitions.id, { onDelete: 'cascade' }),
+    supplierId: uuid('supplier_id')
+      .notNull()
+      .references(() => suppliers.id),
+    totalQuotedMinor: integer('total_quoted_minor').notNull(),
+    leadTimeDays: integer('lead_time_days').notNull(),
+    lineQuotes: jsonb('line_quotes').$type<Array<Record<string, unknown>>>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('rfq_quotes_req_idx').on(t.organizationId, t.requisitionId)],
+);
+
+export const purchaseOrders = pgTable(
+  'purchase_orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    supplierId: uuid('supplier_id')
+      .notNull()
+      .references(() => suppliers.id),
+    requisitionId: uuid('requisition_id').references(() => purchaseRequisitions.id),
+    poNumber: text('po_number').notNull(),
+    status: text('status').notNull().default('PENDING_APPROVAL'), // PENDING_APPROVAL | APPROVED | RECEIVED | CANCELLED
+    totalAmountMinor: integer('total_amount_minor').notNull(),
+    items: jsonb('items').$type<Array<Record<string, unknown>>>().notNull(),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+    expectedDeliveryAt: timestamp('expected_delivery_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('purchase_orders_org_po_idx').on(t.organizationId, t.poNumber),
+    index('purchase_orders_status_idx').on(t.organizationId, t.status),
+  ],
+);
+
+export const goodsReceivedNotes = pgTable(
+  'goods_received_notes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    purchaseOrderId: uuid('purchase_order_id')
+      .notNull()
+      .references(() => purchaseOrders.id),
+    deliveryNoteNumber: text('delivery_note_number').notNull(),
+    receivedItems: jsonb('received_items').$type<Array<Record<string, unknown>>>().notNull(),
+    notes: text('notes'),
+    receivedByUserId: uuid('received_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('grn_po_idx').on(t.organizationId, t.purchaseOrderId)],
+);
+
+export const supplierInvoices = pgTable(
+  'supplier_invoices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    purchaseOrderId: uuid('purchase_order_id')
+      .notNull()
+      .references(() => purchaseOrders.id),
+    supplierId: uuid('supplier_id')
+      .notNull()
+      .references(() => suppliers.id),
+    invoiceNumber: text('invoice_number').notNull(),
+    amountMinor: integer('amount_minor').notNull(),
+    paymentStatus: text('payment_status').notNull().default('UNPAID'), // UNPAID | PAID
+    dueDate: timestamp('due_date', { withTimezone: true }).notNull(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('supplier_invoices_org_idx').on(t.organizationId, t.paymentStatus)],
+);
+
+
 
 
 
