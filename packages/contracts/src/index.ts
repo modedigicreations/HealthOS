@@ -9,3 +9,4 @@ export * from './billing.js';
 export * from './hr.js';
 export * from './compliance.js';
 export * from './equipment.js';
+export * from './engagement_analytics_org.js';

@@ -1489,6 +1489,96 @@ export const maintenanceTickets = pgTable(
   (t) => [index('maintenance_tickets_branch_idx').on(t.organizationId, t.branchId, t.status)],
 );
 
+// ============================================================================
+// MODULE 10: Patient Engagement & Communication
+// ============================================================================
+
+export const patientNotifications = pgTable(
+  'patient_notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    channel: text('channel').notNull(), // SMS | EMAIL | WHATSAPP | PORTAL
+    notificationType: text('notification_type').notNull(),
+    messageEncrypted: text('message_encrypted').notNull(),
+    status: text('status').notNull().default('QUEUED'), // QUEUED | SENT | FAILED
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('patient_notifications_patient_idx').on(t.organizationId, t.patientId)],
+);
+
+export const secureMessages = pgTable(
+  'secure_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    senderUserId: uuid('sender_user_id')
+      .notNull()
+      .references(() => users.id),
+    recipientUserId: uuid('recipient_user_id')
+      .notNull()
+      .references(() => users.id),
+    payloadEncrypted: text('payload_encrypted').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('secure_messages_patient_idx').on(t.organizationId, t.patientId, t.sentAt)],
+);
+
+export const patientSurveys = pgTable(
+  'patient_surveys',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    rating: integer('rating').notNull(),
+    feedback: text('feedback'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('patient_surveys_branch_idx').on(t.organizationId, t.branchId)],
+);
+
+export const healthAnnouncements = pgTable(
+  'health_announcements',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id').references(() => branches.id),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    publishedByUserId: uuid('published_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    publishedAt: timestamp('published_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('health_announcements_org_idx').on(t.organizationId)],
+);
+
+
 
 
 

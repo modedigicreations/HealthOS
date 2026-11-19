@@ -24,6 +24,12 @@ import { ComplianceController } from './compliance/compliance.controller.js';
 import { ComplianceService } from './compliance/compliance.service.js';
 import { EquipmentController } from './equipment/equipment.controller.js';
 import { EquipmentService } from './equipment/equipment.service.js';
+import { EngagementController } from './engagement/engagement.controller.js';
+import { EngagementService } from './engagement/engagement.service.js';
+import { AnalyticsController } from './analytics/analytics.controller.js';
+import { AnalyticsService } from './analytics/analytics.service.js';
+import { OrganizationController } from './organization/organization.controller.js';
+import { OrganizationService } from './organization/organization.service.js';
 
 @Module({
   imports: [SecurityModule],
@@ -39,6 +45,9 @@ import { EquipmentService } from './equipment/equipment.service.js';
     HrController,
     ComplianceController,
     EquipmentController,
+    EngagementController,
+    AnalyticsController,
+    OrganizationController,
   ],
   providers: [
     AuditService,
@@ -52,6 +61,9 @@ import { EquipmentService } from './equipment/equipment.service.js';
     HrService,
     ComplianceService,
     EquipmentService,
+    EngagementService,
+    AnalyticsService,
+    OrganizationService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

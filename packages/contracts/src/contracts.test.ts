@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   BookAppointmentSchema,
   BootstrapOrgSchema,
+  CreateBranchSchema,
   CreateComplianceChecklistSchema,
   CreateConsultationSchema,
   CreateInventoryItemSchema,
@@ -21,6 +22,7 @@ import {
   RecordVitalsSchema,
   RegisterEquipmentSchema,
   ReportIncidentSchema,
+  SendNotificationSchema,
   SubmitHmoClaimSchema,
   TransferStockSchema,
   UpdateConsentSchema,
@@ -280,5 +282,23 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       department: 'LABORATORY',
     });
     assert.equal(eqAsset.success, true);
+  });
+
+  it('validates Module 10 & 12 Engagement & Multi-Branch DTOs', () => {
+    const notif = SendNotificationSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      channel: 'WHATSAPP',
+      notificationType: 'LAB_RESULT_READY',
+      message: 'Your authorized lab report is ready in the HealthOS Patient Portal.',
+    });
+    assert.equal(notif.success, true);
+
+    const branch = CreateBranchSchema.safeParse({
+      name: 'Abuja Diagnostic Centre',
+      code: 'ABJ-LAB',
+      facilityType: 'LAB',
+    });
+    assert.equal(branch.success, true);
   });
 });
