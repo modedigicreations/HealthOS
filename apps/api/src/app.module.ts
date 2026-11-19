@@ -20,6 +20,8 @@ import { BillingController } from './billing/billing.controller.js';
 import { BillingService } from './billing/billing.service.js';
 import { HrController } from './hr/hr.controller.js';
 import { HrService } from './hr/hr.service.js';
+import { ComplianceController } from './compliance/compliance.controller.js';
+import { ComplianceService } from './compliance/compliance.service.js';
 
 @Module({
   imports: [SecurityModule],
@@ -33,6 +35,7 @@ import { HrService } from './hr/hr.service.js';
     ProcurementController,
     BillingController,
     HrController,
+    ComplianceController,
   ],
   providers: [
     AuditService,
@@ -44,6 +47,7 @@ import { HrService } from './hr/hr.service.js';
     ProcurementService,
     BillingService,
     HrService,
+    ComplianceService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

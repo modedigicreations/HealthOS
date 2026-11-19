@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   BookAppointmentSchema,
   BootstrapOrgSchema,
+  CreateComplianceChecklistSchema,
   CreateConsultationSchema,
   CreateInventoryItemSchema,
   CreateInvoiceSchema,
@@ -18,6 +19,7 @@ import {
   RegisterPatientSchema,
   RegisterSupplierSchema,
   RecordVitalsSchema,
+  ReportIncidentSchema,
   SubmitHmoClaimSchema,
   TransferStockSchema,
   UpdateConsentSchema,
@@ -248,5 +250,24 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       endsAt: '2026-11-21T08:00:00.000Z',
     });
     assert.equal(shift.success, true);
+  });
+
+  it('validates Module 8 Compliance & QA DTOs', () => {
+    const checklist = CreateComplianceChecklistSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      jurisdiction: 'NG',
+      category: 'HEFAMAA',
+      title: 'Annual Hospital Inspection',
+      items: [{ code: 'IPC-01', requirement: 'Autoclave sterilization logs up to date', compliant: true }],
+    });
+    assert.equal(checklist.success, true);
+
+    const incident = ReportIncidentSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      category: 'INFECTION_CONTROL',
+      severity: 'HIGH',
+      description: 'Needle-stick injury reported in Phlebotomy Bay 2; PEP protocol initiated.',
+    });
+    assert.equal(incident.success, true);
   });
 });

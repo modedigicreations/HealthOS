@@ -1301,6 +1301,118 @@ export const staffTasks = pgTable(
   (t) => [index('staff_tasks_assignee_idx').on(t.organizationId, t.assignedToUserId, t.status)],
 );
 
+// ============================================================================
+// MODULE 8: Regulatory Compliance & Quality Assurance
+// ============================================================================
+
+export const complianceChecklists = pgTable(
+  'compliance_checklists',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    jurisdiction: text('jurisdiction').notNull(),
+    category: text('category').notNull(),
+    title: text('title').notNull(),
+    items: jsonb('items').$type<Array<Record<string, unknown>>>().notNull(),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('compliance_checklists_org_idx').on(t.organizationId, t.jurisdiction)],
+);
+
+export const facilityLicences = pgTable(
+  'facility_licences',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    licenceName: text('licence_name').notNull(),
+    authority: text('authority').notNull(),
+    licenceNumberEncrypted: text('licence_number_encrypted').notNull(),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('facility_licences_expiry_idx').on(t.organizationId, t.expiresAt)],
+);
+
+export const sopDocuments = pgTable(
+  'sop_documents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    department: text('department').notNull(),
+    title: text('title').notNull(),
+    version: text('version').notNull(),
+    contentChecksum: text('content_checksum').notNull(),
+    storageKeyEncrypted: text('storage_key_encrypted').notNull(),
+    publishedByUserId: uuid('published_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('sop_documents_org_dept_idx').on(t.organizationId, t.department)],
+);
+
+export const incidentReports = pgTable(
+  'incident_reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    category: text('category').notNull(),
+    severity: text('severity').notNull(),
+    descriptionEncrypted: text('description_encrypted').notNull(),
+    status: text('status').notNull().default('OPEN'), // OPEN | UNDER_INVESTIGATION | CLOSED
+    reportedByUserId: uuid('reported_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('incident_reports_org_sev_idx').on(t.organizationId, t.severity, t.status)],
+);
+
+export const capaActions = pgTable(
+  'capa_actions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    incidentId: uuid('incident_id').references(() => incidentReports.id),
+    title: text('title').notNull(),
+    actionPlan: text('action_plan').notNull(),
+    assignedToUserId: uuid('assigned_to_user_id')
+      .notNull()
+      .references(() => users.id),
+    status: text('status').notNull().default('OPEN'), // OPEN | IN_PROGRESS | VERIFIED_CLOSED
+    dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('capa_actions_org_status_idx').on(t.organizationId, t.status)],
+);
+
+
 
 
 
