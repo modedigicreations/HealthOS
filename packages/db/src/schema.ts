@@ -763,5 +763,118 @@ export const labReagents = pgTable(
   (t) => [index('lab_reagents_org_branch_idx').on(t.organizationId, t.branchId)],
 );
 
+// ============================================================================
+// MODULE 4: Pharmacy & Medical Inventory Management
+// ============================================================================
+
+export const inventoryItems = pgTable(
+  'inventory_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    sku: text('sku').notNull(),
+    name: text('name').notNull(),
+    itemType: text('item_type').notNull(), // MEDICINE | MEDICAL_SUPPLY | GENERAL_FACILITY
+    genericName: text('generic_name'),
+    dosageForm: text('dosage_form'),
+    strength: text('strength'),
+    unitOfMeasure: text('unit_of_measure').notNull().default('UNIT'),
+    reorderLevel: integer('reorder_level').notNull().default(20),
+    unitPriceMinor: integer('unit_price_minor').notNull().default(0),
+    drugClass: text('drug_class'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('inventory_items_org_sku_idx').on(t.organizationId, t.sku)],
+);
+
+export const inventoryBatches = pgTable(
+  'inventory_batches',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => inventoryItems.id, { onDelete: 'cascade' }),
+    batchNumber: text('batch_number').notNull(),
+    lotNumber: text('lot_number'),
+    quantityOnHand: integer('quantity_on_hand').notNull().default(0),
+    unitCostMinor: integer('unit_cost_minor').notNull().default(0),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    supplierName: text('supplier_name'),
+    receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('inventory_batches_branch_item_idx').on(t.organizationId, t.branchId, t.itemId),
+    index('inventory_batches_expiry_idx').on(t.organizationId, t.expiresAt),
+  ],
+);
+
+export const stockMovements = pgTable(
+  'stock_movements',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    batchId: uuid('batch_id')
+      .notNull()
+      .references(() => inventoryBatches.id),
+    movementType: text('movement_type').notNull(), // RECEIVE | DISPENSE | TRANSFER_OUT | TRANSFER_IN | RECONCILIATION | DAMAGED | EXPIRED | RETURN
+    quantityDelta: integer('quantity_delta').notNull(),
+    notes: text('notes'),
+    performedByUserId: uuid('performed_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('stock_movements_org_branch_idx').on(t.organizationId, t.branchId, t.createdAt)],
+);
+
+export const dispenseLogs = pgTable(
+  'dispense_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    prescriptionId: uuid('prescription_id').references(() => prescriptions.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    batchId: uuid('batch_id')
+      .notNull()
+      .references(() => inventoryBatches.id),
+    quantityDispensed: integer('quantity_dispensed').notNull(),
+    isRefill: boolean('is_refill').notNull().default(false),
+    clinicalAlertsEncrypted: text('clinical_alerts_encrypted'),
+    dispensedByUserId: uuid('dispensed_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    dispensedAt: timestamp('dispensed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('dispense_logs_patient_idx').on(t.organizationId, t.patientId, t.dispensedAt)],
+);
+
+
 
 

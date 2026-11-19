@@ -4,12 +4,15 @@ import {
   BookAppointmentSchema,
   BootstrapOrgSchema,
   CreateConsultationSchema,
+  CreateInventoryItemSchema,
   CreateLabOrderSchema,
   CreateLabTestSchema,
   CreateWardSchema,
+  DispensePrescriptionSchema,
   EnterLabResultSchema,
   RegisterPatientSchema,
   RecordVitalsSchema,
+  TransferStockSchema,
   UpdateConsentSchema,
 } from './index.js';
 
@@ -136,5 +139,35 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       ],
     });
     assert.equal(result.success, true);
+  });
+
+  it('validates Module 4 Pharmacy & Inventory DTOs', () => {
+    const item = CreateInventoryItemSchema.safeParse({
+      sku: 'MED-AMOX-500',
+      name: 'Amoxicillin 500mg Capsules',
+      itemType: 'MEDICINE',
+      genericName: 'Amoxicillin',
+      drugClass: 'PENICILLIN',
+      reorderLevel: 50,
+      unitPriceMinor: 25000,
+    });
+    assert.equal(item.success, true);
+
+    const dispense = DispensePrescriptionSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      itemId: '33333333-3333-4333-8333-333333333333',
+      quantity: 20,
+      isRefill: false,
+    });
+    assert.equal(dispense.success, true);
+
+    const transfer = TransferStockSchema.safeParse({
+      fromBranchId: '11111111-1111-4111-8111-111111111111',
+      toBranchId: '22222222-2222-4222-8222-222222222222',
+      batchId: '33333333-3333-4333-8333-333333333333',
+      quantity: 10,
+    });
+    assert.equal(transfer.success, true);
   });
 });
