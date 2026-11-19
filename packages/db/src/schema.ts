@@ -1018,6 +1018,152 @@ export const supplierInvoices = pgTable(
   (t) => [index('supplier_invoices_org_idx').on(t.organizationId, t.paymentStatus)],
 );
 
+// ============================================================================
+// MODULE 6: Billing, Payments & Financial Management
+// ============================================================================
+
+export const serviceCatalog = pgTable(
+  'service_catalog',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    department: text('department').notNull(),
+    priceMinor: integer('price_minor').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('service_catalog_org_code_idx').on(t.organizationId, t.code)],
+);
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id),
+    invoiceNumber: text('invoice_number').notNull(),
+    subtotalMinor: integer('subtotal_minor').notNull(),
+    discountMinor: integer('discount_minor').notNull().default(0),
+    totalMinor: integer('total_minor').notNull(),
+    paidMinor: integer('paid_minor').notNull().default(0),
+    status: text('status').notNull().default('UNPAID'), // UNPAID | PARTIAL | PAID | VOID
+    dueDate: timestamp('due_date', { withTimezone: true }),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('invoices_org_number_idx').on(t.organizationId, t.invoiceNumber),
+    index('invoices_patient_idx').on(t.organizationId, t.patientId),
+    index('invoices_status_idx').on(t.organizationId, t.branchId, t.status),
+  ],
+);
+
+export const invoiceLineItems = pgTable(
+  'invoice_line_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    department: text('department').notNull(), // CONSULTATION | LABORATORY | PHARMACY | PROCEDURE | ADMISSION_BED | OTHER
+    description: text('description').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPriceMinor: integer('unit_price_minor').notNull(),
+    lineTotalMinor: integer('line_total_minor').notNull(),
+    referenceType: text('reference_type'),
+    referenceId: uuid('reference_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('invoice_lines_invoice_idx').on(t.invoiceId),
+    index('invoice_lines_dept_idx').on(t.organizationId, t.branchId, t.department),
+  ],
+);
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id),
+    invoiceId: uuid('invoice_id').references(() => invoices.id),
+    amountMinor: integer('amount_minor').notNull(),
+    paymentMethod: text('payment_method').notNull(),
+    isDeposit: boolean('is_deposit').notNull().default(false),
+    isRefund: boolean('is_refund').notNull().default(false),
+    refundReason: text('refund_reason'),
+    gatewayReference: text('gateway_reference'),
+    idempotencyKey: text('idempotency_key'),
+    cashierUserId: uuid('cashier_user_id')
+      .notNull()
+      .references(() => users.id),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('payments_org_idempotency_idx').on(t.organizationId, t.idempotencyKey),
+    index('payments_patient_idx').on(t.organizationId, t.patientId),
+  ],
+);
+
+export const hmoClaims = pgTable(
+  'hmo_claims',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id),
+    hmoProvider: text('hmo_provider').notNull(),
+    policyNumberEncrypted: text('policy_number_encrypted').notNull(),
+    claimedAmountMinor: integer('claimed_amount_minor').notNull(),
+    approvedAmountMinor: integer('approved_amount_minor').notNull().default(0),
+    status: text('status').notNull().default('SUBMITTED'), // SUBMITTED | IN_REVIEW | APPROVED | PAID | REJECTED
+    settlementReference: text('settlement_reference'),
+    submittedByUserId: uuid('submitted_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('hmo_claims_org_status_idx').on(t.organizationId, t.status)],
+);
+
+
 
 
 

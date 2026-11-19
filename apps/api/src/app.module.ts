@@ -16,6 +16,8 @@ import { PharmacyController } from './pharmacy/pharmacy.controller.js';
 import { PharmacyService } from './pharmacy/pharmacy.service.js';
 import { ProcurementController } from './procurement/procurement.controller.js';
 import { ProcurementService } from './procurement/procurement.service.js';
+import { BillingController } from './billing/billing.controller.js';
+import { BillingService } from './billing/billing.service.js';
 
 @Module({
   imports: [SecurityModule],
@@ -27,6 +29,7 @@ import { ProcurementService } from './procurement/procurement.service.js';
     LabController,
     PharmacyController,
     ProcurementController,
+    BillingController,
   ],
   providers: [
     AuditService,
@@ -36,6 +39,7 @@ import { ProcurementService } from './procurement/procurement.service.js';
     LabService,
     PharmacyService,
     ProcurementService,
+    BillingService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

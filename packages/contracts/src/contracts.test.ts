@@ -5,15 +5,18 @@ import {
   BootstrapOrgSchema,
   CreateConsultationSchema,
   CreateInventoryItemSchema,
+  CreateInvoiceSchema,
   CreateLabOrderSchema,
   CreateLabTestSchema,
   CreatePurchaseOrderSchema,
   CreateWardSchema,
   DispensePrescriptionSchema,
   EnterLabResultSchema,
+  RecordPaymentSchema,
   RegisterPatientSchema,
   RegisterSupplierSchema,
   RecordVitalsSchema,
+  SubmitHmoClaimSchema,
   TransferStockSchema,
   UpdateConsentSchema,
 } from './index.js';
@@ -189,5 +192,37 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       items: [{ description: 'Surgical Gloves Box', quantity: 100, unitPriceMinor: 450000 }],
     });
     assert.equal(po.success, true);
+  });
+
+  it('validates Module 6 Billing & HMO DTOs', () => {
+    const invoice = CreateInvoiceSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      items: [
+        { department: 'CONSULTATION', description: 'GP Consultation', quantity: 1, unitPriceMinor: 1000000 },
+        { department: 'LABORATORY', description: 'Lipid Profile', quantity: 1, unitPriceMinor: 1500000 },
+        { department: 'PHARMACY', description: 'Amoxicillin 500mg', quantity: 20, unitPriceMinor: 25000 },
+      ],
+    });
+    assert.equal(invoice.success, true);
+
+    const payment = RecordPaymentSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      amountMinor: 3000000,
+      paymentMethod: 'CARD',
+      idempotencyKey: 'pay-idem-12345678',
+    });
+    assert.equal(payment.success, true);
+
+    const claim = SubmitHmoClaimSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      invoiceId: '33333333-3333-4333-8333-333333333333',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      hmoProvider: 'Hygeia HMO',
+      policyNumber: 'HYG-998877',
+      claimedAmountMinor: 3000000,
+    });
+    assert.equal(claim.success, true);
   });
 });
