@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BookAppointmentSchema,
   BootstrapOrgSchema,
+  CreateConsultationSchema,
+  CreateWardSchema,
   RegisterPatientSchema,
   RecordVitalsSchema,
   UpdateConsentSchema,
@@ -62,5 +65,43 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       scopeDepartment: 'LABORATORY',
     });
     assert.equal(consent.success, true);
+  });
+
+  it('validates Module 2 clinical DTOs (BookAppointment, CreateConsultation, CreateWard)', () => {
+    const appt = BookAppointmentSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      doctorUserId: '33333333-3333-4333-8333-333333333333',
+      scheduledAt: '2026-11-20T10:00:00.000Z',
+      bookingChannel: 'ONLINE',
+      visitType: 'TELEMEDICINE',
+    });
+    assert.equal(appt.success, true);
+
+    const consult = CreateConsultationSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientId: '22222222-2222-4222-8222-222222222222',
+      chiefComplaint: 'Persistent headache for 3 days',
+      diagnosisCode: 'R51',
+      diagnosisDescription: 'Tension-type headache',
+      prescriptions: [
+        {
+          medicationName: 'Paracetamol 500mg',
+          dosage: '1000mg',
+          frequency: 'TID',
+          durationDays: 5,
+          quantity: 30,
+        },
+      ],
+    });
+    assert.equal(consult.success, true);
+
+    const ward = CreateWardSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      name: 'General Medical Ward A',
+      wardType: 'GENERAL',
+      bedLabels: ['A-01', 'A-02', 'A-03'],
+    });
+    assert.equal(ward.success, true);
   });
 });

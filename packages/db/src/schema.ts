@@ -355,3 +355,248 @@ export const patientReferrals = pgTable(
   (t) => [index('patient_referrals_patient_idx').on(t.organizationId, t.patientId)],
 );
 
+// ============================================================================
+// MODULE 2: Appointment, Consultation & Clinical Management
+// ============================================================================
+
+export const doctorProfiles = pgTable(
+  'doctor_profiles',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    specialty: text('specialty').notNull(),
+    licenceNumberEncrypted: text('licence_number_encrypted').notNull(),
+    consultationFeeMinor: integer('consultation_fee_minor').notNull().default(0),
+    telemedicineEnabled: boolean('telemedicine_enabled').notNull().default(false),
+    bio: text('bio'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('doctor_profiles_org_user_idx').on(t.organizationId, t.userId)],
+);
+
+export const doctorSchedules = pgTable(
+  'doctor_schedules',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    doctorUserId: uuid('doctor_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    dayOfWeek: integer('day_of_week').notNull(),
+    startTime: text('start_time').notNull(),
+    endTime: text('end_time').notNull(),
+    slotDurationMinutes: integer('slot_duration_minutes').notNull().default(20),
+    isActive: boolean('is_active').notNull().default(true),
+  },
+  (t) => [index('doctor_schedules_doc_idx').on(t.organizationId, t.doctorUserId, t.dayOfWeek)],
+);
+
+export const appointments = pgTable(
+  'appointments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    doctorUserId: uuid('doctor_user_id')
+      .notNull()
+      .references(() => users.id),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+    bookingChannel: text('booking_channel').notNull().default('MANUAL'),
+    visitType: text('visit_type').notNull().default('OUTPATIENT'),
+    status: text('status').notNull().default('BOOKED'), // BOOKED | CHECKED_IN | IN_CONSULTATION | COMPLETED | CANCELLED | NO_SHOW
+    queueNumber: integer('queue_number'),
+    checkedInAt: timestamp('checked_in_at', { withTimezone: true }),
+    reasonEncrypted: text('reason_encrypted'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('appointments_org_branch_time_idx').on(t.organizationId, t.branchId, t.scheduledAt),
+    index('appointments_doc_idx').on(t.organizationId, t.doctorUserId, t.status),
+    index('appointments_patient_idx').on(t.organizationId, t.patientId),
+  ],
+);
+
+export const clinicalTemplates = pgTable(
+  'clinical_templates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    specialty: text('specialty').notNull(),
+    sections: jsonb('sections').$type<Array<Record<string, unknown>>>().notNull(),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('clinical_templates_org_idx').on(t.organizationId, t.specialty)],
+);
+
+export const consultations = pgTable(
+  'consultations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    appointmentId: uuid('appointment_id').references(() => appointments.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    doctorUserId: uuid('doctor_user_id')
+      .notNull()
+      .references(() => users.id),
+    templateId: uuid('template_id').references(() => clinicalTemplates.id),
+    diagnosisCode: text('diagnosis_code'),
+    clinicalRecordEncrypted: text('clinical_record_encrypted').notNull(),
+    followUpDate: timestamp('follow_up_date', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('consultations_patient_idx').on(t.organizationId, t.patientId, t.createdAt),
+    index('consultations_doctor_idx').on(t.organizationId, t.doctorUserId, t.createdAt),
+  ],
+);
+
+export const prescriptions = pgTable(
+  'prescriptions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    consultationId: uuid('consultation_id')
+      .notNull()
+      .references(() => consultations.id, { onDelete: 'cascade' }),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    doctorUserId: uuid('doctor_user_id')
+      .notNull()
+      .references(() => users.id),
+    status: text('status').notNull().default('PENDING'), // PENDING | DISPENSED | PARTIAL | CANCELLED
+    itemsEncrypted: text('items_encrypted').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('prescriptions_patient_idx').on(t.organizationId, t.patientId)],
+);
+
+export const medicalProcedures = pgTable(
+  'medical_procedures',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    consultationId: uuid('consultation_id')
+      .notNull()
+      .references(() => consultations.id, { onDelete: 'cascade' }),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    procedureCode: text('procedure_code'),
+    procedureName: text('procedure_name').notNull(),
+    notesEncrypted: text('notes_encrypted'),
+    performedByUserId: uuid('performed_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    performedAt: timestamp('performed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('medical_procedures_patient_idx').on(t.organizationId, t.patientId)],
+);
+
+export const wards = pgTable(
+  'wards',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    name: text('name').notNull(),
+    wardType: text('ward_type').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('wards_branch_name_idx').on(t.organizationId, t.branchId, t.name)],
+);
+
+export const beds = pgTable(
+  'beds',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    wardId: uuid('ward_id')
+      .notNull()
+      .references(() => wards.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    status: text('status').notNull().default('AVAILABLE'), // AVAILABLE | OCCUPIED | MAINTENANCE
+  },
+  (t) => [uniqueIndex('beds_ward_label_idx').on(t.wardId, t.label)],
+);
+
+export const admissions = pgTable(
+  'admissions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'cascade' }),
+    attendingDoctorId: uuid('attending_doctor_id')
+      .notNull()
+      .references(() => users.id),
+    bedId: uuid('bed_id')
+      .notNull()
+      .references(() => beds.id),
+    status: text('status').notNull().default('ADMITTED'), // ADMITTED | DISCHARGED
+    admissionReasonEncrypted: text('admission_reason_encrypted').notNull(),
+    dischargeSummaryEncrypted: text('discharge_summary_encrypted'),
+    dischargeDisposition: text('discharge_disposition'),
+    admittedAt: timestamp('admitted_at', { withTimezone: true }).defaultNow().notNull(),
+    dischargedAt: timestamp('discharged_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('admissions_patient_idx').on(t.organizationId, t.patientId),
+    index('admissions_status_idx').on(t.organizationId, t.branchId, t.status),
+  ],
+);
+
+

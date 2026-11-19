@@ -8,14 +8,17 @@ import { AuthController } from './auth/auth.controller.js';
 import { AuthService } from './auth/auth.service.js';
 import { PatientsController } from './patients/patients.controller.js';
 import { PatientsService } from './patients/patients.service.js';
+import { ClinicalController } from './clinical/clinical.controller.js';
+import { ClinicalService } from './clinical/clinical.service.js';
 
 @Module({
   imports: [SecurityModule],
-  controllers: [HealthController, AuthController, PatientsController],
+  controllers: [HealthController, AuthController, PatientsController, ClinicalController],
   providers: [
     AuditService,
     AuthService,
     PatientsService,
+    ClinicalService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
