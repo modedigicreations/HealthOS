@@ -30,6 +30,8 @@ import { AnalyticsController } from './analytics/analytics.controller.js';
 import { AnalyticsService } from './analytics/analytics.service.js';
 import { OrganizationController } from './organization/organization.controller.js';
 import { OrganizationService } from './organization/organization.service.js';
+import { AdvancedController } from './advanced/advanced.controller.js';
+import { AdvancedService } from './advanced/advanced.service.js';
 
 @Module({
   imports: [SecurityModule],
@@ -48,6 +50,7 @@ import { OrganizationService } from './organization/organization.service.js';
     EngagementController,
     AnalyticsController,
     OrganizationController,
+    AdvancedController,
   ],
   providers: [
     AuditService,
@@ -64,6 +67,7 @@ import { OrganizationService } from './organization/organization.service.js';
     EngagementService,
     AnalyticsService,
     OrganizationService,
+    AdvancedService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/engagement', label: '10. Engagement', permission: 'engagement:communicate' },
   { href: '/dashboard/analytics', label: '11. Analytics & BI', permission: 'analytics:read' },
   { href: '/dashboard/organization', label: '12. Multi-Branch', permission: 'branch:manage' },
+  { href: '/dashboard/advanced', label: 'AI, FHIR & Kiosk', permission: 'analytics:read' },
 ];
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {

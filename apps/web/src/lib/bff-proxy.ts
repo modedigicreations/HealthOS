@@ -13,6 +13,7 @@ const ALLOWED_PREFIXES = [
   'v1/engagement',
   'v1/analytics',
   'v1/organization',
+  'v1/advanced',
 ];
 
 export async function proxyToApi(req: Request, pathSegments: string[]) {

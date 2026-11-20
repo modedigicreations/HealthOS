@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  AssistantQuerySchema,
   BookAppointmentSchema,
   BootstrapOrgSchema,
   CreateBranchSchema,
@@ -23,6 +24,7 @@ import {
   RegisterEquipmentSchema,
   ReportIncidentSchema,
   SendNotificationSchema,
+  KioskCheckInSchema,
   SubmitHmoClaimSchema,
   TransferStockSchema,
   UpdateConsentSchema,
@@ -300,5 +302,20 @@ describe('@healthos/contracts Module 1 & Auth DTOs', () => {
       facilityType: 'LAB',
     });
     assert.equal(branch.success, true);
+  });
+
+  it('validates Section 3 Advanced Differentiator DTOs', () => {
+    const q = AssistantQuerySchema.safeParse({
+      question: 'Which medicines are likely to run out?',
+    });
+    assert.equal(q.success, true);
+
+    const kiosk = KioskCheckInSchema.safeParse({
+      branchId: '11111111-1111-4111-8111-111111111111',
+      patientNumber: 'HOS-MAIN-2026-A1B2C3',
+      phone: '+2348001234567',
+      appointmentId: '22222222-2222-4222-8222-222222222222',
+    });
+    assert.equal(kiosk.success, true);
   });
 });
