@@ -13,7 +13,18 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
-  { href: '/dashboard/patients', label: 'Patients & EMR', permission: 'patient:read' },
+  { href: '/dashboard/patients', label: '1. Patients & EMR', permission: 'patient:read' },
+  { href: '/dashboard/clinical', label: '2. Clinical & Queue', permission: 'appointment:read' },
+  { href: '/dashboard/lab', label: '3. Laboratory (LIMS)', permission: 'lab:order' },
+  { href: '/dashboard/pharmacy', label: '4. Pharmacy & Stock', permission: 'inventory:read' },
+  { href: '/dashboard/procurement', label: '5. Procurement', permission: 'procurement:requisition' },
+  { href: '/dashboard/billing', label: '6. Billing & HMO', permission: 'billing:read' },
+  { href: '/dashboard/hr', label: '7. Staff & HR', permission: 'hr:read' },
+  { href: '/dashboard/compliance', label: '8. Compliance & Audit', permission: 'compliance:read' },
+  { href: '/dashboard/equipment', label: '9. Equipment & Facility', permission: 'equipment:read' },
+  { href: '/dashboard/engagement', label: '10. Engagement', permission: 'engagement:communicate' },
+  { href: '/dashboard/analytics', label: '11. Analytics & BI', permission: 'analytics:read' },
+  { href: '/dashboard/organization', label: '12. Multi-Branch', permission: 'branch:manage' },
 ];
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
