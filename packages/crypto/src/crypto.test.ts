@@ -107,6 +107,10 @@ describe('@healthos/crypto', () => {
 
     assert.equal(entry1.length, 64);
     assert.notEqual(entry1, entry2);
+    assert.equal(
+      hashAuditPayload({ z: 1, a: { d: 4, c: 3 } }),
+      hashAuditPayload({ a: { c: 3, d: 4 }, z: 1 }),
+    );
   });
 
   it('generates and verifies RFC 6238 TOTP MFA codes', () => {

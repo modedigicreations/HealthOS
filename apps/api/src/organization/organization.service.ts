@@ -127,26 +127,24 @@ export class OrganizationService {
           .from(branches)
           .where(eq(branches.organizationId, actor.orgId));
 
-        const [revenueRows, patientRows, incidentRows] = await Promise.all([
-          tx
-            .select({
-              branchId: invoices.branchId,
-              revenueMinor: sql<number>`coalesce(sum(${invoices.paidMinor}), 0)`,
-            })
-            .from(invoices)
-            .where(eq(invoices.organizationId, actor.orgId))
-            .groupBy(invoices.branchId),
-          tx
-            .select({ branchId: patients.branchId, patientsCount: count(patients.id) })
-            .from(patients)
-            .where(eq(patients.organizationId, actor.orgId))
-            .groupBy(patients.branchId),
-          tx
-            .select({ branchId: incidentReports.branchId, incidentsCount: count(incidentReports.id) })
-            .from(incidentReports)
-            .where(eq(incidentReports.organizationId, actor.orgId))
-            .groupBy(incidentReports.branchId),
-        ]);
+        const revenueRows = await tx
+          .select({
+            branchId: invoices.branchId,
+            revenueMinor: sql<number>`coalesce(sum(${invoices.paidMinor}), 0)`,
+          })
+          .from(invoices)
+          .where(eq(invoices.organizationId, actor.orgId))
+          .groupBy(invoices.branchId);
+        const patientRows = await tx
+          .select({ branchId: patients.branchId, patientsCount: count(patients.id) })
+          .from(patients)
+          .where(eq(patients.organizationId, actor.orgId))
+          .groupBy(patients.branchId);
+        const incidentRows = await tx
+          .select({ branchId: incidentReports.branchId, incidentsCount: count(incidentReports.id) })
+          .from(incidentReports)
+          .where(eq(incidentReports.organizationId, actor.orgId))
+          .groupBy(incidentReports.branchId);
 
         return branchList.map((b) => ({
           branchId: b.id,

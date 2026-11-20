@@ -28,56 +28,44 @@ export class AnalyticsService {
             ? and(eq(col.organizationId, actor.orgId), eq(col.branchId, branchId))
             : eq(col.organizationId, actor.orgId);
 
-        const [
-          [patientStats],
-          [visitStats],
-          [consultStats],
-          [labStats],
-          [billingStats],
-          [hmoStats],
-          [procurementStats],
-          [surveyStats],
-          [equipmentStats],
-        ] = await Promise.all([
-          tx.select({ total: count(patients.id) }).from(patients).where(orgFilter(patients)),
-          tx.select({ total: count(appointments.id) }).from(appointments).where(orgFilter(appointments)),
-          tx.select({ total: count(consultations.id) }).from(consultations).where(orgFilter(consultations)),
-          tx.select({ total: count(labOrders.id) }).from(labOrders).where(orgFilter(labOrders)),
-          tx
-            .select({
-              totalBilledMinor: sql<number>`coalesce(sum(${invoices.totalMinor}), 0)`,
-              totalCollectedMinor: sql<number>`coalesce(sum(${invoices.paidMinor}), 0)`,
-            })
-            .from(invoices)
-            .where(orgFilter(invoices)),
-          tx
-            .select({
-              totalClaimedMinor: sql<number>`coalesce(sum(${hmoClaims.claimedAmountMinor}), 0)`,
-              totalApprovedMinor: sql<number>`coalesce(sum(${hmoClaims.approvedAmountMinor}), 0)`,
-            })
-            .from(hmoClaims)
-            .where(orgFilter(hmoClaims)),
-          tx
-            .select({
-              totalSpendMinor: sql<number>`coalesce(sum(${purchaseOrders.totalAmountMinor}), 0)`,
-            })
-            .from(purchaseOrders)
-            .where(orgFilter(purchaseOrders)),
-          tx
-            .select({
-              avgRating: sql<number>`coalesce(avg(${patientSurveys.rating}), 0)`,
-              responses: count(patientSurveys.id),
-            })
-            .from(patientSurveys)
-            .where(orgFilter(patientSurveys)),
-          tx
-            .select({
-              maintenanceCostMinor: sql<number>`coalesce(sum(${equipmentServiceLogs.costMinor}), 0)`,
-              downtimeMinutes: sql<number>`coalesce(sum(${equipmentServiceLogs.downtimeMinutes}), 0)`,
-            })
-            .from(equipmentServiceLogs)
-            .where(eq(equipmentServiceLogs.organizationId, actor.orgId)),
-        ]);
+        const [patientStats] = await tx.select({ total: count(patients.id) }).from(patients).where(orgFilter(patients));
+        const [visitStats] = await tx.select({ total: count(appointments.id) }).from(appointments).where(orgFilter(appointments));
+        const [consultStats] = await tx.select({ total: count(consultations.id) }).from(consultations).where(orgFilter(consultations));
+        const [labStats] = await tx.select({ total: count(labOrders.id) }).from(labOrders).where(orgFilter(labOrders));
+        const [billingStats] = await tx
+          .select({
+            totalBilledMinor: sql<number>`coalesce(sum(${invoices.totalMinor}), 0)`,
+            totalCollectedMinor: sql<number>`coalesce(sum(${invoices.paidMinor}), 0)`,
+          })
+          .from(invoices)
+          .where(orgFilter(invoices));
+        const [hmoStats] = await tx
+          .select({
+            totalClaimedMinor: sql<number>`coalesce(sum(${hmoClaims.claimedAmountMinor}), 0)`,
+            totalApprovedMinor: sql<number>`coalesce(sum(${hmoClaims.approvedAmountMinor}), 0)`,
+          })
+          .from(hmoClaims)
+          .where(orgFilter(hmoClaims));
+        const [procurementStats] = await tx
+          .select({
+            totalSpendMinor: sql<number>`coalesce(sum(${purchaseOrders.totalAmountMinor}), 0)`,
+          })
+          .from(purchaseOrders)
+          .where(orgFilter(purchaseOrders));
+        const [surveyStats] = await tx
+          .select({
+            avgRating: sql<number>`coalesce(avg(${patientSurveys.rating}), 0)`,
+            responses: count(patientSurveys.id),
+          })
+          .from(patientSurveys)
+          .where(orgFilter(patientSurveys));
+        const [equipmentStats] = await tx
+          .select({
+            maintenanceCostMinor: sql<number>`coalesce(sum(${equipmentServiceLogs.costMinor}), 0)`,
+            downtimeMinutes: sql<number>`coalesce(sum(${equipmentServiceLogs.downtimeMinutes}), 0)`,
+          })
+          .from(equipmentServiceLogs)
+          .where(eq(equipmentServiceLogs.organizationId, actor.orgId));
 
         return {
           scope: branchId ? { branchId } : { organizationId: actor.orgId },

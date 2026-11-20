@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import {
   GENESIS_AUDIT_HASH,
   computeAuditEntryHash,
@@ -40,18 +40,25 @@ export class AuditService {
         actorId: params.actorId ?? null,
       },
       async (tx) => {
+        // Serialize per-organization audit chain writes to prevent concurrent hash-chain forks
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${'audit:' + params.organizationId}))`,
+        );
+
         const [latest] = await tx
-          .select({
-            sequenceId: auditLogs.sequenceId,
-            entryHash: auditLogs.entryHash,
-          })
+          .select({ entryHash: auditLogs.entryHash })
           .from(auditLogs)
           .where(eq(auditLogs.organizationId, params.organizationId))
           .orderBy(desc(auditLogs.sequenceId))
           .limit(1);
 
+        const [countRow] = await tx
+          .select({ total: count(auditLogs.sequenceId) })
+          .from(auditLogs)
+          .where(eq(auditLogs.organizationId, params.organizationId));
+
         const prevHash = latest?.entryHash ?? GENESIS_AUDIT_HASH;
-        const nextSequence = latest ? latest.sequenceId + 1n : 1n;
+        const nextSequence = BigInt(countRow?.total ?? 0) + 1n;
 
         const entryHash = computeAuditEntryHash({
           sequenceId: nextSequence,

@@ -16,8 +16,25 @@ export interface AuditChainInput {
 
 export const GENESIS_AUDIT_HASH = '0'.repeat(64);
 
+function canonicalize(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalize);
+  }
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    const v = (value as Record<string, unknown>)[key];
+    if (v !== undefined) {
+      sorted[key] = canonicalize(v);
+    }
+  }
+  return sorted;
+}
+
 export function hashAuditPayload(payload: unknown): string {
-  const serialized = JSON.stringify(payload ?? {});
+  const serialized = JSON.stringify(canonicalize(payload ?? {}));
   return createHash('sha256').update(serialized, 'utf8').digest('hex');
 }
 

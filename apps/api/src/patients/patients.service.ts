@@ -51,6 +51,22 @@ export class PatientsService {
     private readonly audit: AuditService,
   ) {}
 
+  private async assertActivePatient(
+    tx: Parameters<Parameters<typeof withTenantContext>[2]>[0],
+    organizationId: string,
+    patientId: string,
+  ): Promise<void> {
+    const [p] = await tx
+      .select({ id: patients.id, status: patients.status })
+      .from(patients)
+      .where(and(eq(patients.id, patientId), eq(patients.organizationId, organizationId)))
+      .limit(1);
+    if (!p) throw new NotFoundException('Patient not found.');
+    if (p.status === 'MERGED') {
+      throw new BadRequestException('Cannot modify a merged duplicate patient record.');
+    }
+  }
+
   async registerPatient(actor: AccessTokenClaims, dto: RegisterPatientDto, meta: RequestMeta) {
     const patientId = randomUUID();
     const year = new Date().getUTCFullYear();
@@ -327,23 +343,26 @@ export class PatientsService {
           }
         }
 
-        const [vitals, allergies, medications, consentsList, referrals] = await Promise.all([
-          tx
-            .select()
-            .from(patientVitals)
-            .where(eq(patientVitals.patientId, patient.id))
-            .orderBy(desc(patientVitals.recordedAt))
-            .limit(25),
-          tx.select().from(patientAllergies).where(eq(patientAllergies.patientId, patient.id)),
-          tx
-            .select()
-            .from(patientMedicationHistory)
-            .where(eq(patientMedicationHistory.patientId, patient.id)),
-          Promise.resolve(consents),
-          tx.select().from(patientReferrals).where(eq(patientReferrals.patientId, patient.id)),
-        ]);
+        const vitals = await tx
+          .select()
+          .from(patientVitals)
+          .where(eq(patientVitals.patientId, patient.id))
+          .orderBy(desc(patientVitals.recordedAt))
+          .limit(25);
+        const allergies = await tx
+          .select()
+          .from(patientAllergies)
+          .where(eq(patientAllergies.patientId, patient.id));
+        const medications = await tx
+          .select()
+          .from(patientMedicationHistory)
+          .where(eq(patientMedicationHistory.patientId, patient.id));
+        const referrals = await tx
+          .select()
+          .from(patientReferrals)
+          .where(eq(patientReferrals.patientId, patient.id));
 
-        return { patient, vitals, allergies, medications, consents: consentsList, referrals };
+        return { patient, vitals, allergies, medications, consents, referrals };
       },
     );
 
@@ -444,6 +463,10 @@ export class PatientsService {
     dto: RecordVitalsDto,
     meta: RequestMeta,
   ) {
+    if (!actor.branchId) {
+      throw new BadRequestException('Branch context is required to record vitals.');
+    }
+    const branchId = actor.branchId;
     const vitalId = randomUUID();
     const notesEncrypted = dto.notes
       ? await this.crypto.cipher.encryptString(dto.notes, {
@@ -456,12 +479,13 @@ export class PatientsService {
 
     await withTenantContext(
       this.dbService.db,
-      { organizationId: actor.orgId, branchId: actor.branchId, actorId: actor.sub },
+      { organizationId: actor.orgId, branchId, actorId: actor.sub },
       async (tx) => {
+        await this.assertActivePatient(tx, actor.orgId, patientId);
         await tx.insert(patientVitals).values({
           id: vitalId,
           organizationId: actor.orgId,
-          branchId: actor.branchId ?? '',
+          branchId,
           patientId,
           systolicBp: dto.systolicBp ?? null,
           diastolicBp: dto.diastolicBp ?? null,
@@ -520,6 +544,7 @@ export class PatientsService {
       this.dbService.db,
       { organizationId: actor.orgId, actorId: actor.sub },
       async (tx) => {
+        await this.assertActivePatient(tx, actor.orgId, patientId);
         await tx.insert(patientAllergies).values({
           id: allergyId,
           organizationId: actor.orgId,
@@ -664,6 +689,10 @@ export class PatientsService {
     dto: CreateReferralDto,
     meta: RequestMeta,
   ) {
+    if (!actor.branchId) {
+      throw new BadRequestException('Branch context is required to create a referral.');
+    }
+    const fromBranchId = actor.branchId;
     const referralId = randomUUID();
     const clinicalSummaryEncrypted = await this.crypto.cipher.encryptJson(
       { reason: dto.reason, clinicalSummary: dto.clinicalSummary ?? null },
@@ -677,12 +706,13 @@ export class PatientsService {
 
     await withTenantContext(
       this.dbService.db,
-      { organizationId: actor.orgId, branchId: actor.branchId, actorId: actor.sub },
+      { organizationId: actor.orgId, branchId: fromBranchId, actorId: actor.sub },
       async (tx) => {
+        await this.assertActivePatient(tx, actor.orgId, patientId);
         await tx.insert(patientReferrals).values({
           id: referralId,
           organizationId: actor.orgId,
-          fromBranchId: actor.branchId ?? '',
+          fromBranchId,
           toBranchId: dto.toBranchId ?? null,
           patientId,
           fromDepartment: dto.fromDepartment,

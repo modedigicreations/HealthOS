@@ -398,18 +398,16 @@ export class BillingService {
       this.dbService.db,
       { organizationId: actor.orgId, actorId: actor.sub },
       async (tx) => {
-        const [patientInvoices, patientPayments] = await Promise.all([
-          tx
-            .select()
-            .from(invoices)
-            .where(and(eq(invoices.organizationId, actor.orgId), eq(invoices.patientId, patientId)))
-            .orderBy(desc(invoices.createdAt)),
-          tx
-            .select()
-            .from(payments)
-            .where(and(eq(payments.organizationId, actor.orgId), eq(payments.patientId, patientId)))
-            .orderBy(desc(payments.recordedAt)),
-        ]);
+        const patientInvoices = await tx
+          .select()
+          .from(invoices)
+          .where(and(eq(invoices.organizationId, actor.orgId), eq(invoices.patientId, patientId)))
+          .orderBy(desc(invoices.createdAt));
+        const patientPayments = await tx
+          .select()
+          .from(payments)
+          .where(and(eq(payments.organizationId, actor.orgId), eq(payments.patientId, patientId)))
+          .orderBy(desc(payments.recordedAt));
 
         const totalBilledMinor = patientInvoices.reduce((s, i) => s + i.totalMinor, 0);
         const totalPaidMinor = patientPayments.reduce((s, p) => s + p.amountMinor, 0);

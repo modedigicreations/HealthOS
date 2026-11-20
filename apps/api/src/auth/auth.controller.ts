@@ -36,7 +36,11 @@ export class AuthController {
     @Body(new ZodValidationPipe(BootstrapOrgSchema)) dto: BootstrapOrgDto,
     @Req() req: Request,
   ) {
-    return this.auth.bootstrapOrganization(dto, extractMeta(req));
+    const headerVal = req.headers['x-bootstrap-secret'];
+    return this.auth.bootstrapOrganization(dto, {
+      ...extractMeta(req),
+      bootstrapSecretHeader: typeof headerVal === 'string' ? headerVal : null,
+    });
   }
 
   @RequirePermissions('hr:manage')

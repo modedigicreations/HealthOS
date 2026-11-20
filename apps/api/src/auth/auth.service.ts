@@ -6,7 +6,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import {
@@ -65,7 +65,19 @@ export class AuthService {
   /**
    * Bootstraps the first Healthcare Organization, primary Branch, and SUPER_ADMIN user.
    */
-  async bootstrapOrganization(dto: BootstrapOrgDto, meta: RequestMeta) {
+  async bootstrapOrganization(
+    dto: BootstrapOrgDto,
+    meta: RequestMeta & { bootstrapSecretHeader?: string | null },
+  ) {
+    const requiredSecret = process.env.BOOTSTRAP_SECRET;
+    if (requiredSecret) {
+      const provided = meta.bootstrapSecretHeader ?? '';
+      const a = Buffer.from(requiredSecret, 'utf8');
+      const b = Buffer.from(provided, 'utf8');
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        throw new ForbiddenException('Invalid or missing bootstrap secret.');
+      }
+    }
     const existing = await this.dbService.db
       .select({ id: organizations.id })
       .from(organizations)
@@ -432,26 +444,36 @@ export class AuthService {
   }
 
   async refreshSession(rawRefreshToken: string, meta: RequestMeta) {
-    const tokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
-
-    const [record] = await this.dbService.db
-      .select()
-      .from(refreshTokens)
-      .where(eq(refreshTokens.tokenHash, tokenHash))
-      .limit(1);
-
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token.');
+    const dotIdx = rawRefreshToken.indexOf('.');
+    if (dotIdx <= 0) {
+      throw new UnauthorizedException('Invalid refresh token format.');
     }
+    const orgId = rawRefreshToken.slice(0, dotIdx);
+    const tokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
 
     return withTenantContext(
       this.dbService.db,
-      { organizationId: record.organizationId, actorId: record.userId },
+      { organizationId: orgId },
       async (tx) => {
-        await tx
+        const [record] = await tx
+          .select()
+          .from(refreshTokens)
+          .where(and(eq(refreshTokens.organizationId, orgId), eq(refreshTokens.tokenHash, tokenHash)))
+          .limit(1);
+
+        if (!record || record.revokedAt || record.expiresAt < new Date()) {
+          throw new UnauthorizedException('Invalid or expired refresh token.');
+        }
+
+        const [revoked] = await tx
           .update(refreshTokens)
           .set({ revokedAt: new Date() })
-          .where(and(eq(refreshTokens.id, record.id), isNull(refreshTokens.revokedAt)));
+          .where(and(eq(refreshTokens.id, record.id), isNull(refreshTokens.revokedAt)))
+          .returning({ id: refreshTokens.id });
+
+        if (!revoked) {
+          throw new UnauthorizedException('Refresh token reuse detected.');
+        }
 
         const [user] = await tx.select().from(users).where(eq(users.id, record.userId)).limit(1);
         if (!user || !user.isActive) {
@@ -507,7 +529,7 @@ export class AuthService {
 
   private async issueSessionTokens(claims: AccessTokenClaims, meta: RequestMeta) {
     const accessToken = await this.tokens.signAccessToken(claims);
-    const rawRefreshToken = randomBytes(48).toString('base64url');
+    const rawRefreshToken = `${claims.orgId}.${randomBytes(48).toString('base64url')}`;
     const tokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
     const expiresAt = new Date(Date.now() + this.env.jwtRefreshTtlSeconds * 1000);
 
