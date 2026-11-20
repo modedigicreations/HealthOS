@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import {
   hmoClaims,
   invoiceLineItems,
   invoices,
+  patients,
   payments,
   serviceCatalog,
   withTenantContext,
@@ -398,6 +400,17 @@ export class BillingService {
       this.dbService.db,
       { organizationId: actor.orgId, actorId: actor.sub },
       async (tx) => {
+        if (actor.role === 'PATIENT') {
+          const [pat] = await tx
+            .select({ portalUserId: patients.portalUserId })
+            .from(patients)
+            .where(and(eq(patients.id, patientId), eq(patients.organizationId, actor.orgId)))
+            .limit(1);
+          if (!pat || pat.portalUserId !== actor.sub) {
+            throw new ForbiddenException('Patients can only view their own billing statement.');
+          }
+        }
+
         const patientInvoices = await tx
           .select()
           .from(invoices)

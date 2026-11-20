@@ -373,7 +373,12 @@ export class ClinicalService {
           await tx
             .update(appointments)
             .set({ status: 'COMPLETED', updatedAt: new Date() })
-            .where(eq(appointments.id, dto.appointmentId));
+            .where(
+              and(
+                eq(appointments.id, dto.appointmentId),
+                eq(appointments.organizationId, actor.orgId),
+              ),
+            );
         }
 
         if (dto.followUpDate) {
@@ -464,7 +469,7 @@ export class ClinicalService {
 
   async createWard(actor: AccessTokenClaims, dto: CreateWardDto) {
     const wardId = randomUUID();
-    await withTenantContext(
+    const createdBeds = await withTenantContext(
       this.dbService.db,
       { organizationId: actor.orgId, branchId: dto.branchId, actorId: actor.sub },
       async (tx) => {
@@ -476,18 +481,21 @@ export class ClinicalService {
           wardType: dto.wardType,
         });
 
-        await tx.insert(beds).values(
-          dto.bedLabels.map((label) => ({
-            organizationId: actor.orgId,
-            wardId,
-            label,
-            status: 'AVAILABLE',
-          })),
-        );
+        return tx
+          .insert(beds)
+          .values(
+            dto.bedLabels.map((label) => ({
+              organizationId: actor.orgId,
+              wardId,
+              label,
+              status: 'AVAILABLE',
+            })),
+          )
+          .returning({ id: beds.id, label: beds.label, status: beds.status });
       },
     );
 
-    return { wardId, bedCount: dto.bedLabels.length };
+    return { wardId, bedCount: createdBeds.length, beds: createdBeds };
   }
 
   async admitPatient(actor: AccessTokenClaims, dto: AdmitPatientDto, meta: RequestMeta) {
@@ -514,7 +522,21 @@ export class ClinicalService {
           throw new ConflictException(`Bed ${bed.label} is currently ${bed.status}.`);
         }
 
-        await tx.update(beds).set({ status: 'OCCUPIED' }).where(eq(beds.id, bed.id));
+        const [occupied] = await tx
+          .update(beds)
+          .set({ status: 'OCCUPIED' })
+          .where(
+            and(
+              eq(beds.id, dto.bedId),
+              eq(beds.organizationId, actor.orgId),
+              eq(beds.status, 'AVAILABLE'),
+            ),
+          )
+          .returning({ id: beds.id });
+
+        if (!occupied) {
+          throw new ConflictException(`Bed ${bed.label} is no longer available.`);
+        }
         await tx.insert(admissions).values({
           id: admissionId,
           organizationId: actor.orgId,

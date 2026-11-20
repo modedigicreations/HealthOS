@@ -242,10 +242,21 @@ export class HrService {
       this.dbService.db,
       { organizationId: actor.orgId, actorId: actor.sub },
       async (tx) => {
-        await tx
+        const [updated] = await tx
           .update(staffLeaves)
           .set({ status: dto.status, decidedByUserId: actor.sub })
-          .where(and(eq(staffLeaves.id, leaveId), eq(staffLeaves.organizationId, actor.orgId)));
+          .where(
+            and(
+              eq(staffLeaves.id, leaveId),
+              eq(staffLeaves.organizationId, actor.orgId),
+              eq(staffLeaves.status, 'PENDING'),
+            ),
+          )
+          .returning({ id: staffLeaves.id });
+
+        if (!updated) {
+          throw new NotFoundException('Pending leave request not found.');
+        }
       },
     );
 

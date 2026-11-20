@@ -172,7 +172,7 @@ export class AdvancedService {
 
         const queueNumber = Number(maxRow?.maxQ ?? 0) + 1;
 
-        await tx
+        const [checkedIn] = await tx
           .update(appointments)
           .set({
             status: 'CHECKED_IN',
@@ -184,8 +184,14 @@ export class AdvancedService {
             and(
               eq(appointments.id, dto.appointmentId),
               eq(appointments.patientId, patient.id),
+              eq(appointments.status, 'BOOKED'),
             ),
-          );
+          )
+          .returning({ id: appointments.id });
+
+        if (!checkedIn) {
+          throw new NotFoundException('Booked appointment not found for this patient.');
+        }
 
         return { patientId: patient.id, queueNumber };
       },
@@ -277,6 +283,9 @@ export class AdvancedService {
     );
 
     if (!patient) throw new NotFoundException('Patient not found.');
+    if (actor.role === 'PATIENT' && patient.portalUserId !== actor.sub) {
+      throw new ForbiddenException('Patients can only export their own FHIR record.');
+    }
 
     const demo = await this.crypto.cipher.decryptJson<PatientDemographics>(
       patient.demographicsEncrypted,

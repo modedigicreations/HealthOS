@@ -342,10 +342,15 @@ export class ProcurementService {
           }
         }
 
-        await tx
+        const [updatedPo] = await tx
           .update(purchaseOrders)
           .set({ status: 'RECEIVED', updatedAt: new Date() })
-          .where(eq(purchaseOrders.id, po.id));
+          .where(and(eq(purchaseOrders.id, po.id), eq(purchaseOrders.status, 'APPROVED')))
+          .returning({ id: purchaseOrders.id });
+
+        if (!updatedPo) {
+          throw new BadRequestException('Purchase order was already received concurrently.');
+        }
       },
     );
 

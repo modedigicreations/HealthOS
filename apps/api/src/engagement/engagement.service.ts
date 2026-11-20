@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import type {
@@ -11,6 +11,7 @@ import {
   healthAnnouncements,
   patientNotifications,
   patientSurveys,
+  patients,
   secureMessages,
   withTenantContext,
 } from '@healthos/db';
@@ -117,6 +118,17 @@ export class EngagementService {
       this.dbService.db,
       { organizationId: actor.orgId, actorId: actor.sub },
       async (tx) => {
+        if (actor.role === 'PATIENT') {
+          const [pat] = await tx
+            .select({ portalUserId: patients.portalUserId })
+            .from(patients)
+            .where(and(eq(patients.id, patientId), eq(patients.organizationId, actor.orgId)))
+            .limit(1);
+          if (!pat || pat.portalUserId !== actor.sub) {
+            throw new ForbiddenException('Patients can only view their own messages.');
+          }
+        }
+
         return tx
           .select()
           .from(secureMessages)

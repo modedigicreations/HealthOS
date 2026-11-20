@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, lte, sql } from 'drizzle-orm';
 import type {
   AdjustStockDto,
   CreateInventoryItemDto,
@@ -273,10 +273,20 @@ export class PharmacyService {
           const take = Math.min(batch.quantityOnHand, remaining);
           remaining -= take;
 
-          await tx
+          const [deducted] = await tx
             .update(inventoryBatches)
-            .set({ quantityOnHand: batch.quantityOnHand - take })
-            .where(eq(inventoryBatches.id, batch.id));
+            .set({ quantityOnHand: sql`${inventoryBatches.quantityOnHand} - ${take}` })
+            .where(
+              and(
+                eq(inventoryBatches.id, batch.id),
+                gte(inventoryBatches.quantityOnHand, take),
+              ),
+            )
+            .returning({ id: inventoryBatches.id });
+
+          if (!deducted) {
+            throw new ConflictException('Concurrent stock deduction conflict; please retry.');
+          }
 
           await tx.insert(stockMovements).values({
             organizationId: actor.orgId,
@@ -377,10 +387,20 @@ export class PharmacyService {
           throw new BadRequestException('Insufficient quantity in source batch.');
         }
 
-        await tx
+        const [deducted] = await tx
           .update(inventoryBatches)
-          .set({ quantityOnHand: source.quantityOnHand - dto.quantity })
-          .where(eq(inventoryBatches.id, source.id));
+          .set({ quantityOnHand: sql`${inventoryBatches.quantityOnHand} - ${dto.quantity}` })
+          .where(
+            and(
+              eq(inventoryBatches.id, source.id),
+              gte(inventoryBatches.quantityOnHand, dto.quantity),
+            ),
+          )
+          .returning({ id: inventoryBatches.id });
+
+        if (!deducted) {
+          throw new ConflictException('Insufficient quantity in source batch (concurrent update).');
+        }
 
         await tx.insert(inventoryBatches).values({
           id: newBatchId,

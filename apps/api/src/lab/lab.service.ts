@@ -23,6 +23,7 @@ import {
   labResults,
   labSamples,
   labTests,
+  patients,
   withTenantContext,
 } from '@healthos/db';
 import { AuditService } from '../audit/audit.service.js';
@@ -170,6 +171,15 @@ export class LabService {
 
         if (!order) throw new NotFoundException('Lab order not found.');
 
+        const [existingResult] = await tx
+          .select({ id: labResults.id })
+          .from(labResults)
+          .where(eq(labResults.orderId, order.id))
+          .limit(1);
+        if (existingResult) {
+          throw new ConflictException('A result has already been entered for this lab order.');
+        }
+
         const qrPayload = JSON.stringify({
           v: 1,
           orgId: actor.orgId,
@@ -280,6 +290,15 @@ export class LabService {
           .limit(1);
 
         if (!order) throw new NotFoundException('Lab order not found.');
+
+        const [existingResult] = await tx
+          .select({ id: labResults.id })
+          .from(labResults)
+          .where(eq(labResults.orderId, order.id))
+          .limit(1);
+        if (existingResult) {
+          throw new ConflictException('A result has already been entered for this lab order.');
+        }
 
         const [test] = await tx
           .select()
@@ -395,6 +414,17 @@ export class LabService {
       this.dbService.db,
       { organizationId: actor.orgId, branchId: actor.branchId, actorId: actor.sub },
       async (tx) => {
+        if (actor.role === 'PATIENT') {
+          const [pat] = await tx
+            .select({ portalUserId: patients.portalUserId })
+            .from(patients)
+            .where(and(eq(patients.id, patientId), eq(patients.organizationId, actor.orgId)))
+            .limit(1);
+          if (!pat || pat.portalUserId !== actor.sub) {
+            throw new ForbiddenException('Patients can only view their own lab results.');
+          }
+        }
+
         const conditions = [
           eq(labResults.organizationId, actor.orgId),
           eq(labResults.patientId, patientId),
